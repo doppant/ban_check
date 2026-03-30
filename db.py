@@ -42,3 +42,44 @@ def get_all_names():
     conn.close()
 
     return [r[0] for r in rows]
+
+def get_all_with_users():
+    import sqlite3
+    conn = sqlite3.connect("data.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT discord_name, input_name FROM searches")
+    rows = cursor.fetchall()
+
+    conn.close()
+    return rows  # list of tuples (discord_name, name)
+
+def get_all_grouped():
+    import sqlite3
+    conn = sqlite3.connect("data.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT discord_name, input_name FROM searches")
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    data = {}
+    for user, name in rows:
+        if user not in data:
+            data[user] = []
+        data[user].append(name)
+
+    return data
+
+def delete_name(discord_id, name_to_delete):
+    import sqlite3
+    conn = sqlite3.connect("data.db")
+    cursor = conn.cursor()
+
+    # hapus hanya jika discord_id cocok
+    cursor.execute("DELETE FROM searches WHERE discord_id = ? AND input_name = ?", (discord_id, name_to_delete))
+    conn.commit()
+    deleted = cursor.rowcount  # jumlah row yang dihapus
+    conn.close()
+    return deleted
