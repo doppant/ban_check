@@ -1,12 +1,16 @@
 import discord
 from discord.ext import commands
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 from db import init_db, save_search, get_all_names
 from check_name import get_data_from_url, find_matches
 
 bot = commands.Bot(command_prefix="!", intents=discord.Intents.default())
 
-TOKEN = "YOUR_TOKEN"
+TOKEN = os.getenv("DISCORD_TOKEN")
 
 
 @bot.event
