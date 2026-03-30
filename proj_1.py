@@ -1,37 +1,23 @@
 import requests
-from itertools import chain
 from bs4 import BeautifulSoup
+from itertools import chain
 
 
-url = "https://assets.playnccdn.com/static-conti/1774778135671.html"
+def get_data_from_url(url):
+    res = requests.get(url)
+    res.encoding = res.apparent_encoding
 
-res = requests.get(url)
-res.encoding = res.apparent_encoding  # fix Korean encoding
+    soup = BeautifulSoup(res.text, "html.parser")
+    table = soup.find("table")
 
-soup = BeautifulSoup(res.text, "html.parser")
+    data = []
+    for row in table.find_all("tr"):
+        cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
+        if cols:
+            data.append(cols)
 
-table = soup.find("table")
+    return list(chain.from_iterable(data[1:]))
 
-data = []
 
-for row in table.find_all("tr"):
-    cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
-    
-    if cols:  # skip empty rows
-        data.append(cols)
-
-all_data = list(chain.from_iterable(data[1:]))
-
-word_find = ["브론aldza", "aogih"]
-
-matches = []
-
-for word in word_find:
-    for ign in all_data:
-        if (ign[:2] == word[:2]) and (len(ign) == len(word)):
-            matches.append(ign)
-
-if matches:
-    print("Found:", matches)
-else:
-    print("Not found")
+def find_matches(scraped_data, db_names):
+    return [name for name in scraped_data if name in db_names]
