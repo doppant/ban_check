@@ -2,13 +2,15 @@ import discord
 from discord.ext import commands
 from dotenv import load_dotenv
 import os
-
-load_dotenv()
+import asyncio
 
 # from db import init_db, save_search, get_all_names, get_all_grouped
 # from check_name import get_data_from_url, find_matches
-import db
+# import db
+import db_postgre
 import check_name
+
+load_dotenv()
 
 
 intents = discord.Intents.default()
@@ -22,12 +24,12 @@ TOKEN = os.getenv("DISCORD_TOKEN")
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-    db.init_db()
+    db_postgre.init_db()
 
 
 @bot.command()
 async def add(ctx, *, name):
-    db.save_search(str(ctx.author.id), str(ctx.author), name)
+    db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
     await ctx.send(f"Saved: {name}")
 
 
@@ -36,19 +38,20 @@ async def checkurl(ctx, url):
     await ctx.send("Checking...")
 
     scraped_data = check_name.get_data_from_url(url)
-    db_rows = db.get_all_with_users()  # ambil tuple (discord_name, name)
+    db_rows = db_postgre.get_all_with_users()  # ambil tuple (discord_name, name)
 
     matches = check_name.find_matches(scraped_data, db_rows)
 
     if matches:
-        msg_lines = [f"{ign} → {user}" for ign, user in matches]
-        await ctx.send("Matched:\n" + "\n".join(msg_lines))
+        msg_lines = [f"{ign.replace('*', 'x')} ~ {db_name} → {user}" for ign, db_name, user in matches]
+        await ctx.send("Ada:\n" + "\n".join(msg_lines))
+        await ctx.send("https://tenor.com/view/reza-auditore-gif-3484781624072545434")
     else:
-        await ctx.send("No matches found")
+        await ctx.send("Tidak Ketemu")
 
 @bot.command()
 async def list(ctx):
-    data = db.get_all_grouped()
+    data = db_postgre.get_all_grouped()
 
     if not data:
         await ctx.send("No data found")
@@ -68,7 +71,7 @@ async def list(ctx):
 
 @bot.command()
 async def delete(ctx, *, name):
-    deleted_count = db.delete_name(str(ctx.author.id), name)
+    deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
 
     if deleted_count > 0:
         await ctx.send(f"Deleted: {name}")

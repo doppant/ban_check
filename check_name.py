@@ -37,7 +37,7 @@ def find_matches(scraped_data, db_rows):
 
             # match 2 huruf pertama + panjang
             if (ign[:2] == db_name[:2]) and (len(ign) == len(db_name)):
-                matches.append((ign, discord_name))
+                matches.append((ign, db_name, discord_name))
 
     # remove duplicate
     return list(set(matches))
