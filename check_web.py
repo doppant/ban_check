@@ -16,18 +16,19 @@ def extract_ban_link(article_id):
         res = requests.get(api_url, headers=headers)
         data = res.json()
 
-        # ✅ FIX: ambil content yang benar
         content = data.get("article", {}).get("content", {}).get("content", "")
 
         if not content:
-            print("❌ Content kosong")
+            print("❌ content kosong")
             return None
 
-        # 🔍 cari link CDN pakai regex (lebih aman)
-        match = re.search(r'https://assets\.playnccdn\.com[^"\']+', content)
+        if "assets.playnccdn.com" in content:
+            start = content.find("https://assets.playnccdn.com")
+            end = content.find('"', start)
 
-        if match:
-            return match.group(0)
+            return content[start:end]
+
+        print("❌ link CDN tidak ditemukan")
 
     except Exception as e:
         print("extract error:", e)

@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import os
 
-import db_postgre
+import db
 import check_name
 import check_web
 
@@ -27,7 +27,7 @@ last_notice_id = None
 async def on_ready():
     print(f"Logged in as {bot.user}")
 
-    db_postgre.init_db_postgre()
+    db.init_db()
 
     if not monitor_notice.is_running():
         monitor_notice.start()
@@ -59,19 +59,20 @@ async def process_ban_notice(channel, url):
 
     try:
         scraped_data = check_name.get_data_from_url(url)
-        db_postgre_rows = db_postgre.get_all_with_users()
+        db_rows = db.get_all_with_users()
 
-        matches = check_name.find_matches(scraped_data, db_postgre_rows)
+        matches = check_name.find_matches(scraped_data, db_rows)
 
         if matches:
             msg_lines = [
-                f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
-                for ign, db_postgre_name, user in matches
+                f"{ign.replace('*','x')} ~ {db_name} → {user}"
+                for ign, db_name, user in matches
             ]
 
-            await channel.send("🚨 MATCH FOUND:\n" + "\n".join(msg_lines))
+            await channel.send("Ada:\n" + "\n".join(msg_lines))
+            await channel.send("https://tenor.com/view/reza-auditore-gif-3484781624072545434")
         else:
-            await channel.send("✅ No match found")
+            await channel.send("Tidak Ada")
 
     except Exception as e:
         await channel.send(f"Error: {e}")
@@ -104,13 +105,12 @@ async def monitor_notice():
             return
 
         await channel.send(
-            f"📰 {notice['title']}\n{notice['url']}"
+            f"📰 {notice['title']}\n{notice['ban_url']}"
         )
 
         if notice["is_ban"]:
             print("BAN DETECTED")
-            await channel.send("🚨 BAN NOTICE!")
-            await process_ban_notice(channel, notice["url"])
+            await process_ban_notice(channel, notice["ban_url"])
     else:
         print("No update")
 
@@ -120,7 +120,7 @@ async def monitor_notice():
 # =====================
 @bot.command()
 async def add(ctx, *, name):
-    db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
+    db.save_search(str(ctx.author.id), str(ctx.author), name)
     await ctx.send(f"Saved: {name}")
 
 
@@ -129,14 +129,14 @@ async def checkurl(ctx, url):
     await ctx.send("Checking...")
 
     scraped_data = check_name.get_data_from_url(url)
-    db_postgre_rows = db_postgre.get_all_with_users()
+    db_rows = db.get_all_with_users()
 
-    matches = check_name.find_matches(scraped_data, db_postgre_rows)
+    matches = check_name.find_matches(scraped_data, db_rows)
 
     if matches:
         msg_lines = [
-            f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
-            for ign, db_postgre_name, user in matches
+            f"{ign.replace('*','x')} ~ {db_name} → {user}"
+            for ign, db_name, user in matches
         ]
         await ctx.send("Ada:\n" + "\n".join(msg_lines))
     else:
@@ -145,7 +145,7 @@ async def checkurl(ctx, url):
 
 @bot.command()
 async def list(ctx):
-    data = db_postgre.get_all_grouped()
+    data = db.get_all_grouped()
 
     if not data:
         await ctx.send("No data")
@@ -158,7 +158,7 @@ async def list(ctx):
 
 @bot.command()
 async def delete(ctx, *, name):
-    deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
+    deleted_count = db.delete_name(str(ctx.author.id), name)
 
     if deleted_count > 0:
         await ctx.send(f"Deleted: {name}")
