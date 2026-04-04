@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import os
 
-import db
+import db_postgre
 import check_name
 import check_web
 
@@ -27,15 +27,7 @@ last_notice_id = None
 async def on_ready():
     print(f"Logged in as {bot.user}")
 
-    # DEBUG CHANNEL LIST
-    # print("\n=== DEBUG CHANNEL ===")
-    # for guild in bot.guilds:
-    #     print(f"Server: {guild.name}")
-    #     for ch in guild.channels:
-    #         print(f"- {ch.name} | {ch.id}")
-    # print("=====================\n")
-
-    db.init_db()
+    db_postgre.init_db_postgre()
 
     if not monitor_notice.is_running():
         monitor_notice.start()
@@ -67,14 +59,14 @@ async def process_ban_notice(channel, url):
 
     try:
         scraped_data = check_name.get_data_from_url(url)
-        db_rows = db.get_all_with_users()
+        db_postgre_rows = db_postgre.get_all_with_users()
 
-        matches = check_name.find_matches(scraped_data, db_rows)
+        matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
         if matches:
             msg_lines = [
-                f"{ign.replace('*','x')} ~ {db_name} → {user}"
-                for ign, db_name, user in matches
+                f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+                for ign, db_postgre_name, user in matches
             ]
 
             await channel.send("🚨 MATCH FOUND:\n" + "\n".join(msg_lines))
@@ -128,7 +120,7 @@ async def monitor_notice():
 # =====================
 @bot.command()
 async def add(ctx, *, name):
-    db.save_search(str(ctx.author.id), str(ctx.author), name)
+    db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
     await ctx.send(f"Saved: {name}")
 
 
@@ -137,14 +129,14 @@ async def checkurl(ctx, url):
     await ctx.send("Checking...")
 
     scraped_data = check_name.get_data_from_url(url)
-    db_rows = db.get_all_with_users()
+    db_postgre_rows = db_postgre.get_all_with_users()
 
-    matches = check_name.find_matches(scraped_data, db_rows)
+    matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
     if matches:
         msg_lines = [
-            f"{ign.replace('*','x')} ~ {db_name} → {user}"
-            for ign, db_name, user in matches
+            f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+            for ign, db_postgre_name, user in matches
         ]
         await ctx.send("Ada:\n" + "\n".join(msg_lines))
     else:
@@ -153,7 +145,7 @@ async def checkurl(ctx, url):
 
 @bot.command()
 async def list(ctx):
-    data = db.get_all_grouped()
+    data = db_postgre.get_all_grouped()
 
     if not data:
         await ctx.send("No data")
@@ -166,7 +158,7 @@ async def list(ctx):
 
 @bot.command()
 async def delete(ctx, *, name):
-    deleted_count = db.delete_name(str(ctx.author.id), name)
+    deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
 
     if deleted_count > 0:
         await ctx.send(f"Deleted: {name}")
