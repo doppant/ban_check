@@ -27,6 +27,15 @@ last_notice_id = None
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+
+    # 🔥 DEBUG SERVER & CHANNEL
+    # print("\n=== DEBUG SERVER & CHANNEL ===")
+    # for guild in bot.guilds:
+    #     print(f"Server: {guild.name} (ID: {guild.id})")
+    #     for ch in guild.channels:
+    #         print(f" - {ch.name} | ID: {ch.id}")
+    # print("================================\n")
+
     db_postgre.init_db()
 
     if not monitor_notice.is_running():
@@ -34,10 +43,28 @@ async def on_ready():
 
 
 # =====================
+# GET CHANNEL SAFE
+# =====================
+async def get_channel_safe():
+    channel = bot.get_channel(CHANNEL_ID)
+
+    if channel is None:
+        print("⚠️ Channel not in cache, trying fetch...")
+        try:
+            channel = await bot.fetch_channel(CHANNEL_ID)
+            print("✅ Channel fetched successfully")
+        except Exception as e:
+            print("❌ Channel fetch error:", e)
+            return None
+
+    return channel
+
+
+# =====================
 # AUTO BAN CHECK
 # =====================
 async def process_ban_notice(channel, url):
-    await channel.send("🔍 Checking...")
+    await channel.send("🔍 Checking ban list...")
 
     try:
         scraped_data = check_name.get_data_from_url(url)
@@ -51,12 +78,9 @@ async def process_ban_notice(channel, url):
                 for ign, db_name, user in matches
             ]
 
-            await channel.send(
-                "🚨 Ada:\n" + "\n".join(msg_lines)
-            )
-            await channel.send("https://tenor.com/view/reza-auditore-gif-3484781624072545434")
+            await channel.send("🚨 MATCH FOUND:\n" + "\n".join(msg_lines))
         else:
-            await channel.send("Tidak Ada")
+            await channel.send("✅ No match found in ban list")
 
     except Exception as e:
         await channel.send(f"Error while checking ban list: {e}")
@@ -72,26 +96,32 @@ async def monitor_notice():
     notice = check_web.get_latest_notice()
 
     if not notice:
+        print("No notice data")
         return
 
-    # notice baru
+    print(f"Latest notice: {notice['id']} - {notice['title']}")
+
     if notice["id"] != last_notice_id:
+        print("🔔 New notice detected")
+
         last_notice_id = notice["id"]
 
-        channel = bot.get_channel(CHANNEL_ID)
+        channel = await get_channel_safe()
+
         if not channel:
-            print("Channel not found!")
+            print("❌ Channel still not found")
             return
 
-        # kirim info notice
         await channel.send(
-            f"📰 Ada yang baru:\n{notice['title']}\n{notice['url']}"
+            f"📰 New Notice:\n{notice['title']}\n{notice['url']}"
         )
 
-        # kalau ban → auto check
         if notice["is_ban"]:
-            await channel.send("🚨 Absen!")
+            print("🚨 BAN NOTICE DETECTED")
+            await channel.send("🚨 BAN NOTICE DETECTED!")
             await process_ban_notice(channel, notice["url"])
+    else:
+        print("No new notice")
 
 
 # =====================
@@ -118,7 +148,6 @@ async def checkurl(ctx, url):
             for ign, db_name, user in matches
         ]
         await ctx.send("Ada:\n" + "\n".join(msg_lines))
-        await ctx.send("https://tenor.com/view/reza-auditore-gif-3484781624072545434")
     else:
         await ctx.send("Tidak Ketemu")
 
