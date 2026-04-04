@@ -1,6 +1,5 @@
-# check_web.py
-
 import requests
+import re
 
 API_URL = "https://api-community.plaync.com/aion2/board/notice_ko/article/search/moreArticle?isVote=true&moreSize=18&moreDirection=BEFORE&previousArticleId=0"
 
@@ -10,9 +9,35 @@ headers = {
     "User-Agent": "Mozilla/5.0"
 }
 
+
+def extract_ban_link(article_id):
+    try:
+        api_url = f"https://api-community.plaync.com/aion2/board/notice_ko/article/{article_id}"
+        res = requests.get(api_url, headers=headers)
+        data = res.json()
+
+        # ✅ FIX: ambil content yang benar
+        content = data.get("article", {}).get("content", {}).get("content", "")
+
+        if not content:
+            print("❌ Content kosong")
+            return None
+
+        # 🔍 cari link CDN pakai regex (lebih aman)
+        match = re.search(r'https://assets\.playnccdn\.com[^"\']+', content)
+
+        if match:
+            return match.group(0)
+
+    except Exception as e:
+        print("extract error:", e)
+
+    return None
+
+
 def get_latest_notice():
     try:
-        res = requests.get(API_URL, headers=headers, timeout=10)
+        res = requests.get(API_URL, headers=headers)
         data = res.json()
 
         articles = data.get("contentList", [])
@@ -22,13 +47,28 @@ def get_latest_notice():
 
         top = articles[0]
 
+        article_id = top.get("id")
+        title = top.get("title")
+
+        notice_url = f"https://aion2.plaync.com/ko-kr/board/notice/view?articleId={article_id}"
+
+        is_ban = TARGET in title
+
+        ban_url = None
+
+        if is_ban:
+            print("🔍 Extracting ban link from API...")
+            ban_url = extract_ban_link(article_id)
+            print("Ban URL:", ban_url)
+
         return {
-            "id": top.get("id"),
-            "title": top.get("title"),
-            "is_ban": TARGET in top.get("title", ""),
-            "url": f"https://aion2.plaync.com/ko-kr/board/notice/view?articleId={top.get('articleId')}"
+            "id": article_id,
+            "title": title,
+            "url": notice_url,
+            "is_ban": is_ban,
+            "ban_url": ban_url
         }
 
     except Exception as e:
-        print("check_web error:", e)
+        print("get_latest_notice error:", e)
         return None
