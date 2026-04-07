@@ -99,6 +99,10 @@ async def monitor_notice():
 
         last_notice_id = notice["id"]
 
+        if not notice["is_ban"]:
+            print("Skip non-ban notice")
+            return
+
         channel = await get_channel_safe()
 
         if not channel:
