@@ -135,56 +135,56 @@ async def run_db(func, *args):
 # =====================
 # COMMANDS
 # =====================
-# @bot.command()
-# async def add(ctx, *, name):
-#     db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
-#     await ctx.send(f"Saved: {name}")
+@bot.command()
+async def add(ctx, *, name):
+    db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
+    await ctx.send(f"Saved: {name}")
 
 
-# @bot.command()
-# async def checkurl(ctx, url):
-#     await ctx.send("Checking...")
+@bot.command()
+async def checkurl(ctx, url):
+    await ctx.send("Checking...")
 
-#     scraped_data = check_name.get_data_from_url(url)
-#     db_postgre_rows = db_postgre.get_all_with_users()
+    scraped_data = check_name.get_data_from_url(url)
+    db_postgre_rows = db_postgre.get_all_with_users()
 
-#     matches = check_name.find_matches(scraped_data, db_postgre_rows)
+    matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
-#     if matches:
-#         msg_lines = [
-#             f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
-#             for ign, db_postgre_name, user in matches
-#         ]
-#         await ctx.send("Ada:\n" + "\n".join(msg_lines))
-#     else:
-#         await ctx.send("Tidak Ketemu")
-
-
-# @bot.command()
-# async def list(ctx):
-#     data = await run_db(db_postgre.get_all_grouped)
-
-#     loading = await ctx.send("Mengambil data ....")
-
-#     if not data:
-#         await loading.edit(content="📭 Database kosong.")
-#         return
-
-#     await loading.delete()
-
-#     for user, names in data.items():
-#         msg = f"## {user}\n" + ", ".join(names)
-#         await ctx.send(msg)
+    if matches:
+        msg_lines = [
+            f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+            for ign, db_postgre_name, user in matches
+        ]
+        await ctx.send("Ada:\n" + "\n".join(msg_lines))
+    else:
+        await ctx.send("Tidak Ketemu")
 
 
-# @bot.command()
-# async def delete(ctx, *, name):
-#     deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
+@bot.command()
+async def list(ctx):
+    data = await run_db(db_postgre.get_all_grouped)
 
-#     if deleted_count > 0:
-#         await ctx.send(f"Deleted: {name}")
-#     else:
-#         await ctx.send("Not found")
+    loading = await ctx.send("Mengambil data ....")
+
+    if not data:
+        await loading.edit(content="📭 Database kosong.")
+        return
+
+    await loading.delete()
+
+    for user, names in data.items():
+        msg = f"## {user}\n" + ", ".join(names)
+        await ctx.send(msg)
+
+
+@bot.command()
+async def delete(ctx, *, name):
+    deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
+
+    if deleted_count > 0:
+        await ctx.send(f"Deleted: {name}")
+    else:
+        await ctx.send("Not found")
 
 # =====================
 # SLASH GROUP: /aion
