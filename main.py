@@ -224,7 +224,10 @@ class AionGroup(app_commands.Group):
 
     # /ban list
     @app_commands.command(name="list", description="Lihat daftar nama")
-    async def list(self, interaction: discord.Interaction):
+    @app_commands.describe(user="Filter berdasarkan user")
+    async def list(self, interaction: discord.Interaction, user: discord.User | None = None):
+        await interaction.response.defer() 
+
         data = await run_db(db_postgre.get_all_grouped)
 
         if not data:
@@ -233,9 +236,32 @@ class AionGroup(app_commands.Group):
 
         await interaction.response.send_message("Mengambil data...")
 
-        for user, names in data.items():
-            msg = f"## {user}\n" + ", ".join(names)
-            await interaction.followup.send(msg)
+        full_message = ""
+
+        # ========================
+        # MODE FILTER USER
+        # ========================
+        if user:
+            user_name = str(user)
+
+            if user_name not in data:
+                await interaction.followup.send(f"❌ Tidak ada data untuk {user_name}")
+                return
+
+            names = data[user_name]
+
+            full_message += f"## {user_name}\n"
+            full_message += ", ".join(names)
+
+        # ========================
+        # MODE SEMUA USER
+        # ========================
+        else:
+            for user_name, names in data.items():
+                full_message += f"## {user_name}\n"
+                full_message += ", ".join(names) + "\n\n"
+
+        await interaction.followup.send(full_message)
 
     # /ban delete
     @app_commands.command(name="delete", description="Hapus nama dari database")
