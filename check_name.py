@@ -71,18 +71,18 @@ def find_matches(scraped_data, db_rows):
     matches = []
 
     for discord_name, db_name in db_rows:
-        db_name = db_name.lower()
+        # db_name = db_name.lower()
 
         for ign in scraped_data:
-            ign_clean = ign.lower()
+            # ign_clean = ign.lower()
 
-            if len(ign_clean) < 2 or len(db_name) < 2:
+            if len(ign) < 2 or len(db_name) < 2:
                 continue
 
             # 🔥 matching rule (bisa kamu tweak)
             if (
-                ign_clean[:2] == db_name[:2] and
-                len(ign_clean) == len(db_name)
+                ign[:2] == db_name[:2] and
+                len(ign) == len(db_name)
             ):
                 matches.append((ign, db_name, discord_name))
 
