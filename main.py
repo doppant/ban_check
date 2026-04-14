@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 from dotenv import load_dotenv
 import os
 import asyncio
@@ -29,6 +30,9 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
     db_postgre.init_db()
+
+    await bot.tree.sync()
+    print("Slash command synced")
 
     if not monitor_notice.is_running():
         monitor_notice.start()
@@ -131,59 +135,125 @@ async def run_db(func, *args):
 # =====================
 # COMMANDS
 # =====================
-@bot.command()
-async def add(ctx, *, name):
-    db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
-    await ctx.send(f"Saved: {name}")
+# @bot.command()
+# async def add(ctx, *, name):
+#     db_postgre.save_search(str(ctx.author.id), str(ctx.author), name)
+#     await ctx.send(f"Saved: {name}")
 
 
-@bot.command()
-async def checkurl(ctx, url):
-    await ctx.send("Checking...")
+# @bot.command()
+# async def checkurl(ctx, url):
+#     await ctx.send("Checking...")
 
-    scraped_data = check_name.get_data_from_url(url)
-    db_postgre_rows = db_postgre.get_all_with_users()
+#     scraped_data = check_name.get_data_from_url(url)
+#     db_postgre_rows = db_postgre.get_all_with_users()
 
-    matches = check_name.find_matches(scraped_data, db_postgre_rows)
+#     matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
-    if matches:
-        msg_lines = [
-            f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
-            for ign, db_postgre_name, user in matches
-        ]
-        await ctx.send("Ada:\n" + "\n".join(msg_lines))
-    else:
-        await ctx.send("Tidak Ketemu")
-
-
-@bot.command()
-async def list(ctx):
-    data = await run_db(db_postgre.get_all_grouped)
-
-    loading = await ctx.send("Mengambil data ....")
-
-    if not data:
-        await loading.edit(content="📭 Database kosong.")
-        return
-
-    await loading.delete()
-
-    for user, names in data.items():
-        msg = f"## {user}\n" + ", ".join(names)
-        await ctx.send(msg)
+#     if matches:
+#         msg_lines = [
+#             f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+#             for ign, db_postgre_name, user in matches
+#         ]
+#         await ctx.send("Ada:\n" + "\n".join(msg_lines))
+#     else:
+#         await ctx.send("Tidak Ketemu")
 
 
-@bot.command()
-async def delete(ctx, *, name):
-    deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
+# @bot.command()
+# async def list(ctx):
+#     data = await run_db(db_postgre.get_all_grouped)
 
-    if deleted_count > 0:
-        await ctx.send(f"Deleted: {name}")
-    else:
-        await ctx.send("Not found")
+#     loading = await ctx.send("Mengambil data ....")
+
+#     if not data:
+#         await loading.edit(content="📭 Database kosong.")
+#         return
+
+#     await loading.delete()
+
+#     for user, names in data.items():
+#         msg = f"## {user}\n" + ", ".join(names)
+#         await ctx.send(msg)
+
+
+# @bot.command()
+# async def delete(ctx, *, name):
+#     deleted_count = db_postgre.delete_name(str(ctx.author.id), name)
+
+#     if deleted_count > 0:
+#         await ctx.send(f"Deleted: {name}")
+#     else:
+#         await ctx.send("Not found")
+
+# =====================
+# SLASH GROUP: /aion
+# =====================
+class AionGroup(app_commands.Group):
+    def __init__(self):
+        super().__init__(name="aion", description="Ban checking system")
+
+    # /ban add
+    @app_commands.command(name="add", description="Tambah nama ke database")
+    async def add(self, interaction: discord.Interaction, name: str):
+        db_postgre.save_search(
+            str(interaction.user.id),
+            str(interaction.user),
+            name
+        )
+        await interaction.response.send_message(f"Saved: {name}")
+
+    # /ban checkurl
+    @app_commands.command(name="checkurl", description="Cek URL ban secara manual")
+    async def checkurl(self, interaction: discord.Interaction, url: str):
+        await interaction.response.send_message("Checking...")
+
+        scraped_data = check_name.get_data_from_url(url)
+        db_postgre_rows = db_postgre.get_all_with_users()
+
+        matches = check_name.find_matches(scraped_data, db_postgre_rows)
+
+        if matches:
+            msg_lines = [
+                f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+                for ign, db_postgre_name, user in matches
+            ]
+            await interaction.followup.send("Ada:\n" + "\n".join(msg_lines))
+        else:
+            await interaction.followup.send("Tidak Ketemu")
+
+    # /ban list
+    @app_commands.command(name="list", description="Lihat daftar nama")
+    async def list(self, interaction: discord.Interaction):
+        data = await run_db(db_postgre.get_all_grouped)
+
+        if not data:
+            await interaction.response.send_message("📭 Database kosong.")
+            return
+
+        await interaction.response.send_message("Mengambil data...")
+
+        for user, names in data.items():
+            msg = f"## {user}\n" + ", ".join(names)
+            await interaction.followup.send(msg)
+
+    # /ban delete
+    @app_commands.command(name="delete", description="Hapus nama dari database")
+    async def delete(self, interaction: discord.Interaction, name: str):
+        deleted_count = db_postgre.delete_name(
+            str(interaction.user.id),
+            name
+        )
+
+        if deleted_count > 0:
+            await interaction.response.send_message(f"Deleted: {name}")
+        else:
+            await interaction.response.send_message("Not found")
 
 
 # =====================
 # RUN
 # =====================
+
+bot.tree.add_command(AionGroup())
 bot.run(TOKEN)
