@@ -234,7 +234,7 @@ class AionGroup(app_commands.Group):
             await interaction.response.send_message("📭 Database kosong.")
             return
 
-        await interaction.response.send_message("Mengambil data...")
+        # await interaction.response.send_message("Mengambil data...")
 
         full_message = ""
 
