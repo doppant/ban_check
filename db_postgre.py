@@ -6,8 +6,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Railway secara otomatis menyediakan DATABASE_URL
-DATABASE_URL = os.getenv("DATABASE_URL")
-# DATABASE_URL = os.getenv("PUBLIC_DATABASE_URL")
+# DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("PUBLIC_DATABASE_URL")
 
 def get_connection():
     # Fungsi pembantu untuk koneksi ke Postgres
