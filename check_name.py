@@ -2,30 +2,23 @@ import requests
 from bs4 import BeautifulSoup
 from itertools import chain
 
+# def get_data_from_url(url):
+#     res = requests.get(url)
+#     res.encoding = res.apparent_encoding
 
-def get_data_from_url(url):
-    res = requests.get(url)
-    res.encoding = res.apparent_encoding
+#     soup = BeautifulSoup(res.text, "html.parser")
 
-    soup = BeautifulSoup(res.text, "html.parser")
+#     table = soup.find("table")
+#     data = []
 
-    table = soup.find("table")
-    data = []
+#     for row in table.find_all("tr"):
+#         cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
+#         if cols:
+#             data.append(cols)
 
-    for row in table.find_all("tr"):
-        cols = [col.get_text(strip=True) for col in row.find_all(["td", "th"])]
-        if cols:
-            data.append(cols)
+#     all_data = list(chain.from_iterable(data[1:]))
 
-    all_data = list(chain.from_iterable(data[1:]))
-
-    return all_data
-
-
-import requests
-from bs4 import BeautifulSoup
-from itertools import chain
-
+#     return all_data
 
 def get_data_from_url(url):
     try:
@@ -79,7 +72,6 @@ def find_matches(scraped_data, db_rows):
             if len(ign) < 2 or len(db_name) < 2:
                 continue
 
-            # 🔥 matching rule (bisa kamu tweak)
             if (
                 ign[:2] == db_name[:2] and
                 len(ign) == len(db_name)
