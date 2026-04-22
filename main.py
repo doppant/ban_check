@@ -99,12 +99,15 @@ async def monitor_notice():
 
     print(f"Latest: {notice['id']}")
 
-    last_notice_id = db_postgre.get_last_article_id()
+    last_notice_id = await run_db(db_postgre.get_last_article_id)
 
     if notice["id"] != last_notice_id:
         print("New notice!")
 
-        await run_db(db_postgre.update_last_article(notice["id"]))
+        await run_db(
+            db_postgre.update_last_article,
+            notice["id"]
+        )
 
         last_notice_id = notice["id"]
 
