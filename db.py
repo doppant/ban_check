@@ -15,6 +15,20 @@ def init_db():
     )
     """)
 
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS web_state (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        last_article_id TEXT
+    )
+    """)
+
+    # check row
+    cursor.execute("""
+    INSERT INTO web_state (id, last_article_id)
+    VALUES (1, NULL)
+    ON CONFLICT (id) DO NOTHING
+    """)
+    
     conn.commit()
     conn.close()
 

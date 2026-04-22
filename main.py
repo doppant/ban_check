@@ -4,6 +4,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 import os
 import asyncio
+import re
 
 import db_postgre
 import check_name
@@ -63,8 +64,8 @@ async def process_ban_notice(channel, url):
     await channel.send("🔍 Checking ban list...")
 
     try:
-        scraped_data = check_name.get_data_from_url(url)
-        db_postgre_rows = db_postgre.get_all_with_users()
+        scraped_data = await run_db(check_name.get_data_from_url(url))
+        db_postgre_rows = await run_db(db_postgre.get_all_with_users())
 
         matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
@@ -98,8 +99,12 @@ async def monitor_notice():
 
     print(f"Latest: {notice['id']}")
 
+    last_notice_id = db_postgre.get_last_article_id()
+
     if notice["id"] != last_notice_id:
         print("New notice!")
+
+        await run_db(db_postgre.update_last_article(notice["id"]))
 
         last_notice_id = notice["id"]
 
@@ -195,21 +200,36 @@ class AionGroup(app_commands.Group):
 
     # /ban add
     @app_commands.command(name="add", description="Tambah nama ke database")
-    async def add(self, interaction: discord.Interaction, name: str):
-        db_postgre.save_search(
-            str(interaction.user.id),
-            str(interaction.user),
-            name
-        )
-        await interaction.response.send_message(f"Saved: {name}")
+    async def add_names(self, interaction: discord.Interaction, names: str):
+
+        await interaction.response.defer()
+
+        saved_names = []
+        split_names = re.split(r'[,\s]+', names.strip())
+
+        for name in split_names:
+            if not name:
+                continue
+
+            await run_db(
+                db_postgre.save_search,
+                str(interaction.user.id),
+                str(interaction.user),
+                name
+            )
+            saved_names.append(name)
+
+        await interaction.followup.send(f"Saved: {', '.join(saved_names)}")
 
     # /ban checkurl
     @app_commands.command(name="checkurl", description="Cek URL ban secara manual")
     async def checkurl(self, interaction: discord.Interaction, url: str):
-        await interaction.response.send_message("Checking...")
+        await interaction.response.defer()
 
         scraped_data = check_name.get_data_from_url(url)
         db_postgre_rows = db_postgre.get_all_with_users()
+        
+        await interaction.followup.send("Checking...")
 
         matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
@@ -231,7 +251,7 @@ class AionGroup(app_commands.Group):
         data = await run_db(db_postgre.get_all_grouped)
 
         if not data:
-            await interaction.response.send_message("📭 Database kosong.", ephemeral=True)
+            await interaction.followup.send("📭 Database kosong.", ephemeral=True)
             return
 
         # await interaction.response.send_message("Mengambil data...")
@@ -266,15 +286,17 @@ class AionGroup(app_commands.Group):
     # /ban delete
     @app_commands.command(name="delete", description="Hapus nama dari database")
     async def delete(self, interaction: discord.Interaction, name: str):
+        await interaction.response.defer()
+
         deleted_count = db_postgre.delete_name(
             str(interaction.user.id),
             name
         )
 
         if deleted_count > 0:
-            await interaction.response.send_message(f"Deleted: {name}")
+            await interaction.followup.send(f"Deleted: {name}")
         else:
-            await interaction.response.send_message("Not found")
+            await interaction.followup.send("Not found")
 
 
 # =====================
