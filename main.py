@@ -64,8 +64,8 @@ async def process_ban_notice(channel, url):
     await channel.send("🔍 Checking ban list...")
 
     try:
-        scraped_data = await run_db(check_name.get_data_from_url(url))
-        db_postgre_rows = await run_db(db_postgre.get_all_with_users())
+        scraped_data = check_name.get_data_from_url(url)
+        db_postgre_rows = db_postgre.get_all_with_users()
 
         matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
