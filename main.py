@@ -76,7 +76,7 @@ async def process_ban_notice(channel, url):
             ]
 
             await channel.send("Ada:\n" + "\n".join(msg_lines))
-            await channel.send("https://tenor.com/view/reza-auditore-gif-3484781624072545434")
+            await channel.send("https://cdn.discordapp.com/attachments/1445229252881682452/1458461450807804104/202601072043_1.gif")
         else:
             await channel.send("Tidak Ada")
 
