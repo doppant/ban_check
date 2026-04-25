@@ -205,7 +205,9 @@ class AionGroup(app_commands.Group):
     @app_commands.command(name="add", description="Tambah nama ke database")
     async def add_names(self, interaction: discord.Interaction, names: str):
 
-        await interaction.response.defer()
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+
 
         saved_names = []
         split_names = re.split(r'[,\s]+', names.strip())
