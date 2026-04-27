@@ -172,12 +172,19 @@ class NameDropdown(discord.ui.Select):
         super().__init__(placeholder="Pilih nama untuk ditampilkan...", options=options)
 
     async def callback(self, interaction: discord.Interaction):
-        # Ini akan mengirim pesan baru yang bisa dilihat semua orang
+        
         selected_name = self.values[0]
         await interaction.response.send_message(
             f"{selected_name}",
-            ephemeral=False  # Ini kuncinya agar dilihat banyak orang
+            ephemeral=False  
         )
+
+        # Ambil message yang baru dikirim
+        msg = await interaction.original_response()
+
+        # Tunggu 2 menit lalu hapus
+        await asyncio.sleep(60)
+        await msg.delete()
 
 # =====================
 # COMMANDS
