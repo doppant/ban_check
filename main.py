@@ -28,9 +28,13 @@ last_notice_id = None
 # =====================
 @bot.event
 async def on_ready():
+    global last_notice_id
     print(f"Logged in as {bot.user}")
 
-    db_postgre.init_db()
+    await run_db(db_postgre.init_db)
+
+    last_notice_id = await run_db(db_postgre.get_last_article_id)
+    print("Last article from DB:", last_notice_id)
 
     await bot.tree.sync()
     print("Slash command synced")
@@ -65,7 +69,7 @@ async def process_ban_notice(channel, url):
 
     try:
         scraped_data = check_name.get_data_from_url(url)
-        db_postgre_rows = db_postgre.get_all_with_users()
+        db_postgre_rows = await run_db(db_postgre.get_all_with_users)
 
         matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
@@ -98,8 +102,13 @@ async def monitor_notice():
         return
 
     print(f"Latest: {notice['id']}")
+    print(f"Last DB ID: {last_notice_id}")
 
-    last_notice_id = await run_db(db_postgre.get_last_article_id)
+    if last_notice_id is None:
+        await run_db(db_postgre.update_last_article, notice["id"])
+        last_notice_id = notice["id"]
+        print("Initialized last_notice_id")
+        return
 
     if notice["id"] != last_notice_id:
         print("New notice!")
@@ -137,8 +146,38 @@ async def monitor_notice():
 # Fungsi ini penting agar database yang lambat tidak membuat bot "pingsan"
 async def run_db(func, *args):
     loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, func, *args)
+    try:
+        return await loop.run_in_executor(None, func, *args)
+    except Exception as e:
+        print(f"❌ Database Error: {e}")
+        return None # Kembalikan None agar loop tidak crash
+    
+# =====================
+# UI NAME LISTS
+# =====================
+class NameSelectView(discord.ui.View):
+    def __init__(self, names):
+        super().__init__(timeout=60) # Menu hilang dalam 60 detik
+        
+        # Batasi maksimal 25 opsi (Limit Discord)
+        options = [
+            discord.SelectOption(label=name, description=f"Klik untuk Menampilkan nama {name}")
+            for name in names[:25]
+        ]
 
+        self.add_item(NameDropdown(options))
+
+class NameDropdown(discord.ui.Select):
+    def __init__(self, options):
+        super().__init__(placeholder="Pilih nama untuk ditampilkan...", options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        # Ini akan mengirim pesan baru yang bisa dilihat semua orang
+        selected_name = self.values[0]
+        await interaction.response.send_message(
+            f"{selected_name}",
+            ephemeral=False  # Ini kuncinya agar dilihat banyak orang
+        )
 
 # =====================
 # COMMANDS
@@ -154,7 +193,7 @@ async def checkurl(ctx, url):
     await ctx.send("Checking...")
 
     scraped_data = check_name.get_data_from_url(url)
-    db_postgre_rows = db_postgre.get_all_with_users()
+    db_postgre_rows = await run_db(db_postgre.get_all_with_users)
 
     matches = check_name.find_matches(scraped_data, db_postgre_rows)
 
@@ -206,8 +245,7 @@ class AionGroup(app_commands.Group):
     async def add_names(self, interaction: discord.Interaction, names: str):
 
         if not interaction.response.is_done():
-            await interaction.response.defer()
-
+            await interaction.response.defer(ephemeral=True)
 
         saved_names = []
         split_names = re.split(r'[,\s]+', names.strip())
@@ -229,7 +267,8 @@ class AionGroup(app_commands.Group):
     # /ban checkurl
     @app_commands.command(name="checkurl", description="Cek URL ban secara manual")
     async def checkurl(self, interaction: discord.Interaction, url: str):
-        await interaction.response.defer()
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
 
         scraped_data = check_name.get_data_from_url(url)
         db_postgre_rows = db_postgre.get_all_with_users()
@@ -251,47 +290,54 @@ class AionGroup(app_commands.Group):
     @app_commands.command(name="list", description="Lihat daftar nama")
     @app_commands.describe(user="Filter berdasarkan user")
     async def list(self, interaction: discord.Interaction, user: discord.User | None = None):
-        await interaction.response.defer(ephemeral=True) 
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
 
         data = await run_db(db_postgre.get_all_grouped)
 
         if not data:
-            await interaction.followup.send("📭 Database kosong.", ephemeral=True)
+            await interaction.followup.send("📭 Database kosong atau error.", ephemeral=True)
             return
 
-        # await interaction.response.send_message("Mengambil data...")
-
-        full_message = ""
-
         # ========================
-        # MODE FILTER USER
+        # MODE FILTER USER (Pakai Dropdown)
         # ========================
         if user:
             user_name = str(user)
-
             if user_name not in data:
                 await interaction.followup.send(f"❌ Tidak ada data untuk {user_name}", ephemeral=True)
                 return
 
             names = data[user_name]
-
-            full_message += f"## {user_name}\n"
-            full_message += ", ".join(names)
+            view = NameSelectView(names)
+            await interaction.followup.send(
+                f"Berikut daftar nama milik **{user_name}**:",
+                view=view,
+                ephemeral=True
+            )
+            return # Keluar dari fungsi setelah kirim dropdown
 
         # ========================
-        # MODE SEMUA USER
+        # MODE SEMUA USER (Teks Biasa)
         # ========================
-        else:
-            for user_name, names in data.items():
-                full_message += f"## {user_name}\n"
-                full_message += ", ".join(names) + "\n\n"
+        full_message = ""
+        for user_name, names in data.items():
+            section = f"## {user_name}\n" + ", ".join(names) + "\n\n"
+            # Cek limit karakter Discord (2000)
+            if len(full_message) + len(section) > 2000:
+                await interaction.followup.send(full_message, ephemeral=True)
+                full_message = section
+            else:
+                full_message += section
 
-        await interaction.followup.send(full_message, ephemeral=True)
+        if full_message:
+            await interaction.followup.send(full_message, ephemeral=True)
 
     # /ban delete
     @app_commands.command(name="delete", description="Hapus nama dari database")
     async def delete(self, interaction: discord.Interaction, name: str):
-        await interaction.response.defer()
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
 
         deleted_count = db_postgre.delete_name(
             str(interaction.user.id),
