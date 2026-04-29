@@ -1,5 +1,4 @@
 import requests
-import re
 
 API_URL = "https://api-community.plaync.com/aion2/board/notice_ko/article/search/moreArticle?isVote=true&moreSize=18&moreDirection=BEFORE&previousArticleId=0"
 

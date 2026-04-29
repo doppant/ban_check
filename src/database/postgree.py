@@ -5,13 +5,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Railway secara otomatis menyediakan DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL")
-# DATABASE_URL = os.getenv("PUBLIC_DATABASE_URL")
+# DATABASE_URL = {
+#                     "host": os.getenv("DB_HOST"),
+#                     "database": os.getenv("DB_NAME"),
+#                     "user": os.getenv("DB_USER"),
+#                     "password": os.getenv("DB_PASSWORD"),
+#                     "port": os.getenv("DB_PORT", "5432")
+
+#                 }
 
 def get_connection():
     # Fungsi pembantu untuk koneksi ke Postgres
-    return psycopg2.connect(DATABASE_URL, sslmode='require')
+    return psycopg2.connect(**DATABASE_URL, sslmode='require')
+    # return psycopg2.connect(**DATABASE_URL)
+    
 
 def init_db():
     with get_connection() as conn:
