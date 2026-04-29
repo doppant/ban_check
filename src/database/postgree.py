@@ -17,7 +17,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 def get_connection():
     # Fungsi pembantu untuk koneksi ke Postgres
-    return psycopg2.connect(**DATABASE_URL, sslmode='require')
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
     # return psycopg2.connect(**DATABASE_URL)
     
 
