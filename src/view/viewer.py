@@ -20,34 +20,18 @@ class NameDropdown(discord.ui.Select):
     def __init__(self, options):
         super().__init__(placeholder="Pilih nama untuk ditampilkan...", options=options)
 
-    # async def callback(self, interaction: discord.Interaction):
-        
-    #     selected_name = self.values[0]
-    #     await interaction.response.send_message(
-    #         f"{selected_name}",
-    #         ephemeral=False  
-    #     )
-
-    #     # Ambil message yang baru dikirim
-    #     msg = await interaction.original_response()
-
-    #     # Tunggu 2 menit lalu hapus
-    #     await asyncio.sleep(5)
-    #     await msg.delete()
-
     async def callback(self, interaction: discord.Interaction):
         
         selected_name = self.values[0]
-        await interaction.response.edit_message(
-            content=f"✅ Kamu telah memilih: **{selected_name}**", 
-            view=None
-        )
+        
+        await interaction.response.defer(ephemeral=True)
+
+        await interaction.delete_original_response()
 
         new_msg = await interaction.followup.send(
             f"{selected_name}",
             ephemeral=False
         )
 
-        # 3. Tunggu 5 detik lalu hapus pesan nama tersebut
         await asyncio.sleep(5)
         await new_msg.delete()
