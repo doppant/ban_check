@@ -33,5 +33,5 @@ class NameDropdown(discord.ui.Select):
             ephemeral=False
         )
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(30)
         await new_msg.delete()
