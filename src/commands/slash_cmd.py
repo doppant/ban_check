@@ -123,3 +123,70 @@ class AionGroup(app_commands.Group):
             await interaction.followup.send(f"Deleted: {name}")
         else:
             await interaction.followup.send("Not found")
+
+    @app_commands.command(name="show_all", description="Menampilkan semua user list")
+    async def show_all(self, interaction: discord.integrations):
+        if not interaction.response.is_done():
+            await interaction.response.defer()
+        
+        data = await run_db(postgree.get_all_grouped)
+
+        if not data:
+            await interaction.followup.send("📭 Database kosong atau error.", ephemeral=True)
+            return
+        
+        full_message = ""
+        for user_name, names in data.items():
+            section = f"## {user_name}\n" + ", ".join(names) + "\n\n"
+            # Cek limit karakter Discord (2000)
+            if len(full_message) + len(section) > 2000:
+                await interaction.followup.send(full_message, ephemeral=True)
+                full_message = section
+            else:
+                full_message += section
+
+        if full_message:
+            await interaction.followup.send(full_message, ephemeral=True)
+
+    @app_commands.command(name="add_details", description="Menambahkan detail link, class, dan server")
+    @app_commands.describe(name="Nama karakter di database", link="Link valid dari aion2tools")
+    async def add_details(self, interaction: discord.Interaction, name: str, link: str):
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+
+        discord_id = str(interaction.user.id)
+
+        # Panggil scraping utilitas untuk mengambil data dari link aion2tools
+        job_class, server = await run_db(check_name.get_character_details, link)
+
+        if not job_class or not server:
+            await interaction.followup.send(
+                "❌ Gagal mengambil detail dari link. Pastikan link aion2tools valid dan coba lagi.",
+                ephemeral=True
+            )
+            return
+
+        # 2. Update detail data ke database PostgreSQL
+        updated_count = await run_db(
+            postgree.update_search_details,
+            discord_id,
+            name,
+            link,
+            job_class,
+            server
+        )
+
+        if updated_count > 0:
+            await interaction.followup.send(
+                f"✅ **Detail berhasil ditambahkan untuk {name}!**\n"
+                f"🔹 **Server:** {server}\n"
+                f"🔹 **Class:** {job_class}\n"
+                f"🔗 **Link:** {link}",
+                ephemeral=True
+            )
+        else:
+            await interaction.followup.send(
+                f"❌ Karakter **{name}** tidak ditemukan di daftar pencarianmu.\n"
+                f"Silakan tambahkan nama terlebih dahulu menggunakan `/aion add`.",
+                ephemeral=True
+            )
