@@ -97,7 +97,7 @@ async def process_ban_notice(channel, url):
                 await channel.send("Ada:\n" + chunk)
                 await channel.send(get_asset("gifs", "ban"))
         else:
-            await channel.send("Tidak Ada")
+            await channel.send("CHECK!! CHECK!!")
 
     except Exception as e:
         await channel.send(f"Error processing ban notice: {e}")
