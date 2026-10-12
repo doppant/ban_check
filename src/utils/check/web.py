@@ -77,7 +77,6 @@ def get_latest_notice():
             "is_ban": is_ban,
             "ban_url": ban_url
         }
-        print(is_ban)
 
     except Exception as e:
         print("get_latest_notice error:", e)
