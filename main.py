@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import os
 import asyncio
+import traceback
 
 from src.database import postgree
 from src.utils.check import name as name_checker
@@ -17,7 +18,8 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 TOKEN = os.getenv("DISCORD_TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+intents.message_content = True
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"), 0)
 last_notice_id = None
 
 
@@ -49,7 +51,6 @@ async def on_ready():
 # =====================
 async def get_channel_safe():
     channel = bot.get_channel(CHANNEL_ID)
-
     if channel is None:
         print("⚠️ Channel not cached, fetching...")
         try:
@@ -58,7 +59,6 @@ async def get_channel_safe():
         except Exception as e:
             print("❌ Fetch error:", e)
             return None
-
     return channel
 
 
@@ -67,10 +67,18 @@ async def get_channel_safe():
 # =====================
 async def process_ban_notice(channel, url):
     try:
-        scraped_data = name_checker.get_data_from_url(url)
+        loop = asyncio.get_running_loop()
+        
+        # Offload blocking synchronous web scraping to a thread executor
+        scraped_data = await loop.run_in_executor(
+            None, name_checker.get_data_from_url, url
+        )
+        
         db_postgre_rows = await run_db(postgree.get_all_with_users)
 
-        matches = name_checker.find_matches(scraped_data, db_postgre_rows)
+        matches = await loop.run_in_executor(
+            None, name_checker.find_matches, scraped_data, db_postgre_rows
+        )
 
         if matches:
             msg_lines = [
@@ -87,15 +95,12 @@ async def process_ban_notice(channel, url):
 
             if chunk:
                 await channel.send("Ada:\n" + chunk)
-                await channel.send(get_asset(
-                                        "gifs", 
-                                        "ban")
-                                    )
+                await channel.send(get_asset("gifs", "ban"))
         else:
             await channel.send("Tidak Ada")
 
     except Exception as e:
-        await channel.send(f"Error: {e}")
+        await channel.send(f"Error processing ban notice: {e}")
 
 async def load_extensions():
     await bot.load_extension("src.commands.prefix_cmd")
@@ -145,22 +150,26 @@ async def monitor_notice():
         return
 
     await channel.send(f"📰 {notice['title']}\n{notice['ban_url']}")
-    await channel.send(get_asset(
-                                "gifs", 
-                                "ban")
-                                    )
+    await channel.send(get_asset("gifs", "ban"))
 
     # print("BAN DETECTED")
     await process_ban_notice(channel, notice["ban_url"])
+
+# Prevent task from permanently dying on uncaught loop exceptions
+@monitor_notice.error
+async def monitor_notice_error(error):
+    print("❌ Critical error in monitor_notice loop:", error)
+    traceback.print_exception(type(error), error, error.__traceback__)
+
+
+# =====================
+# RUN
+# =====================
 
 async def main():
     async with bot:
         await load_extensions()
         await bot.start(TOKEN)
-
-# =====================
-# RUN
-# =====================
 
 if __name__ == "__main__":
     asyncio.run(main())
