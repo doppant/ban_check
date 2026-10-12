@@ -65,37 +65,37 @@ async def get_channel_safe():
 # =====================
 # BAN PROCESS
 # =====================
-# async def process_ban_notice(channel, url):
-#     try:
-#         scraped_data = name_checker.get_data_from_url(url)
-#         db_postgre_rows = await run_db(postgree.get_all_with_users)
+async def process_ban_notice(channel, url):
+    try:
+        scraped_data = name_checker.get_data_from_url(url)
+        db_postgre_rows = await run_db(postgree.get_all_with_users)
 
-#         matches = name_checker.find_matches(scraped_data, db_postgre_rows)
+        matches = name_checker.find_matches(scraped_data, db_postgre_rows)
 
-#         if matches:
-#             msg_lines = [
-#                 f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
-#                 for ign, db_postgre_name, user in matches
-#             ]
+        if matches:
+            msg_lines = [
+                f"{ign.replace('*','x')} ~ {db_postgre_name} → {user}"
+                for ign, db_postgre_name, user in matches
+            ]
 
-#             chunk = ""
-#             for line in msg_lines:
-#                 if len(chunk) + len(line) > 1900:
-#                     await channel.send(chunk)
-#                     chunk = ""
-#                 chunk += line + "\n"
+            chunk = ""
+            for line in msg_lines:
+                if len(chunk) + len(line) > 1900:
+                    await channel.send(chunk)
+                    chunk = ""
+                chunk += line + "\n"
 
-#             if chunk:
-#                 await channel.send("Ada:\n" + chunk)
-#                 await channel.send(get_asset(
-#                                         "gifs", 
-#                                         "ban")
-#                                     )
-#         else:
-#             await channel.send("Tidak Ada")
+            if chunk:
+                await channel.send("Ada:\n" + chunk)
+                await channel.send(get_asset(
+                                        "gifs", 
+                                        "ban")
+                                    )
+        else:
+            await channel.send("Tidak Ada")
 
-#     except Exception as e:
-#         await channel.send(f"Error: {e}")
+    except Exception as e:
+        await channel.send(f"Error: {e}")
 
 async def load_extensions():
     await bot.load_extension("src.commands.prefix_cmd")
@@ -151,7 +151,7 @@ async def monitor_notice():
                                     )
 
     # print("BAN DETECTED")
-    # await process_ban_notice(channel, notice["ban_url"])
+    await process_ban_notice(channel, notice["ban_url"])
 
 async def main():
     async with bot:
